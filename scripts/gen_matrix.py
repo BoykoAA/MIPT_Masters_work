@@ -16,3 +16,14 @@ def matrix_gen(size=(128, 20000), classes=3):
         matrix = np.hstack((matrix, m))
 
     return matrix
+
+def get_ICA(size=(128, 128)):
+
+    '''
+    Generates an ICA matrix
+    consisting of random values
+    '''
+
+    s, c = size
+    ICA = np.random.uniform(10**(-1), 20**(-1), (s,c))
+    return ICA
