@@ -1,7 +1,5 @@
-def get_sample(matrix, sample_size=1500):
+def get_sample(matrix, sample_size=150, step=50):
     sample = []
-    step = 50
-    sample_size = 150
 
     beg_sample = 0
     end_sample = 0
