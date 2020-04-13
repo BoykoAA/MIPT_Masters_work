@@ -211,14 +211,14 @@ def save_FE_items(FE_items):
             fout.write('\n')
 
 
-
-
+CHANALS = 128
+LINSPACE = 0, 200, 20000
+FIRST_N_FFT = 20
+N_COMPONENTS_PCA = 60
+size = CHANALS, LINSPACE[2]
 
 def main():
-    CHANALS = 128
-    LINSPACE = 0, 200, 20000
-    FIRST_N_FFT = 20
-    N_COMPONENTS_PCA = 60
+    global CHANALS, LINSPACE, FIRST_N_FFT, N_COMPONENTS_PCA, size
 
     data = get_cosinus_matrix(chanals=CHANALS, linspace=LINSPACE)
     ICA = get_ICA(size=(CHANALS, CHANALS))
