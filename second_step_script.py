@@ -15,12 +15,12 @@ import operator
 
 
 
-def generate_simple_dataset(size, pandas=False):
-    h, w = size
-    v = np.linspace(0.1, 40000, w)
+def generate_simple_dataset(linspace, chanals, pandas=False):
+    p1,p2,p3 = linspace
+    v = np.linspace(p1, p2, p3)
 
     dataset = v
-    for i in range(h-1):
+    for i in range(chanals-1):
         dataset = np.vstack((dataset, v))
 
     if pandas:
@@ -28,24 +28,20 @@ def generate_simple_dataset(size, pandas=False):
 
     return dataset
 
-
 def func_for_1class(t, noise=0.5):
     return 2*np.cos(5*pi*t) + 5*np.cos(15*pi*t) + 3*np.cos(20*pi*t) + noise
-
 
 def func_for_2class(t, noise=0.5):
     return 2*np.cos(5*pi*t) + 2*np.cos(10*pi*t) + 3*np.cos(20*pi*t) + noise
 
-
 def func_for_3class(t, noise=0.5):
     return 2*np.cos(5*pi*t) + 10*np.cos(20*pi*t) + 3*np.cos(20*pi*t) + noise
 
+def get_cosinus_matrix(chanals, linspace):
+    data_simple = generate_simple_dataset(linspace, chanals)
+    vec = data_simple[0]
 
-def get_cosinus_matrix():
-    data_simple = generate_simple_dataset((128, 20000))
-    vec = data_simple[65]
-
-    size = (128, 20000)
+    size = (chanals, linspace[2])
     class_ = size[1]//3
     class1 = [0,class_]
     class2 = [class_,class_*2]
@@ -55,7 +51,8 @@ def get_cosinus_matrix():
     vec[class2[0]:class2[1]] = func_for_2class(vec[class2[0]:class2[1]])
     vec[class3[0]:class3[1]] = func_for_3class(vec[class3[0]:class3[1]])
 
-    data_simple[65] = vec
+    for i in range(chanals):
+        data_simple[i] = vec
 
     return data_simple
 
@@ -74,26 +71,32 @@ def plot_fe_rf(rf, data_pca):
     ax.set_title("Random Forest Feature Importances (MDI)")
     fig.tight_layout()
     plt.savefig('RF_PCA_Feature_Importances.png')
-    plt.show()
+    # plt.show()
 
 
 
-def features_imp_pca(train_features, model_pca, X_pca, features_good, features_bad, features_normal):
+def features_imp_pca(train_features, model_pca, X_pca, features_good, features_bad, features_normal, size):
+
+    global N_COMPONENTS_PCA, FIRST_N_FFT
+
     reward_best = 50
     reward_max = 10
     reward_med = 5
     reward_min = 1
 
     fe_imp = {}
-    for feature in range(0, 2560):
+    for feature in range(0, size[1]):
         fe_imp['feature' + '_' + str(feature)] = 0
 
-    for feature in tqdm(range(0, 2560)):
+    component_max_list = [(pd.DataFrame(model_pca.components_).loc[i, :]).max() for i in range(N_COMPONENTS_PCA)]
+    component_mean_list = [(pd.DataFrame(model_pca.components_).loc[i, :]).mean() for i in range(N_COMPONENTS_PCA)]
+
+    for feature in tqdm(range(0, size[0]*FIRST_N_FFT)):
         reward = 0
-        for component in range(0, 60):
+        for component in range(0, N_COMPONENTS_PCA):
             feature_value = model_pca.components_[component, feature]
-            component_max = (pd.DataFrame(model_pca.components_).loc[component, :]).max()
-            component_mean = (pd.DataFrame(model_pca.components_).loc[component, :]).mean()
+            component_max = component_max_list[component]
+            component_mean = component_mean_list[component]
 
             comparison_max = component_max - component_max / 10
             comparison_med = component_max - component_max / 20
@@ -135,6 +138,21 @@ def features_imp_pca(train_features, model_pca, X_pca, features_good, features_b
     return fe_imp
 
 
+def scoring_fi(feature_importances):
+    above_zero = feature_importances['importance'][:np.sum(feature_importances['importance'] > 0)]
+    mean_value = above_zero.mean()
+    features_good = above_zero[above_zero > mean_value].index.tolist()
+    features_normal = above_zero[above_zero <= mean_value].index.tolist()
+    features_bad = [i for i in feature_importances.index.tolist() if i not in features_good and
+                    i not in features_normal]
+
+    features_good = str(features_good).strip('[]').split(' ')
+    features_normal = str(features_normal).strip('[]').split(' ')
+    features_bad = str(features_bad).strip('[]').split(' ')
+
+    return features_good, features_normal, features_bad
+
+
 def write_fe(sorted_d):
     with open('features_imp.txt', 'w') as fout:
         fout.write('name    weight')
@@ -147,22 +165,23 @@ def write_fe(sorted_d):
 
 
 def table_recovery(train_features):
+    global size, N_COMPONENTS_PCA, FIRST_N_FFT, CHANALS
     ### Восстановим исходный вид таблицы, а именно 128x20x100 (102 в данном примере
     old_table = []
     for i in range(train_features.shape[0]):
-        sample = pd.DataFrame(np.zeros((128, 20)))
+        sample = pd.DataFrame(np.zeros((CHANALS, FIRST_N_FFT)))
         string = train_features.iloc[i, :]
 
         index_start = 0
-        index_end = 128
+        index_end = size[0]
 
 
-        for s in range(20):
+        for s in range(CHANALS):
             sample.iloc[:, s] = string.iloc[index_start : index_end].values
             index_start = index_end
-            index_end += 128
+            index_end += CHANALS
 
-            if index_end > 2560:
+            if index_end > size[0]*FIRST_N_FFT:
                 break
 
         old_table.append(sample.values)
@@ -195,16 +214,19 @@ def save_FE_items(FE_items):
 
 
 
-
-
 def main():
-    size = (128, 20000)
-    class_ = size[1]//3
-    #Получаем новую матрицу смеси косинусов
-    data = get_cosinus_matrix()
-    ICA = get_ICA()
+    CHANALS = 128
+    LINSPACE = 0, 200, 20000
+    FIRST_N_FFT = 20
+    N_COMPONENTS_PCA = 60
+
+    data = get_cosinus_matrix(chanals=CHANALS, linspace=LINSPACE)
+    ICA = get_ICA(size=(CHANALS, CHANALS))
     #Перемножаем ICA и EEG матрицы
     matrix = np.matmul(ICA, data)
+    size = matrix.shape
+    class_ = class_ = size[1]//3
+
     #Разбиваем на матрицы классов, чтоб проще было делить на семплы
     matrix_class1 = matrix[:,0:class_]
     matrix_calss2 = matrix[:, class_:class_*2]
@@ -214,11 +236,14 @@ def main():
     sample_calss2 = get_sample(matrix_calss2)
     sample_calss3 = get_sample(matrix_calss3)
     #Преобразование Фурье
-    samples_fft = list(map(abs, fft_for_sample(sample_calss1 + sample_calss2 + sample_calss3, first_n_elements=20)))
 
-    sample_calss1_fft = samples_fft[:34]
-    sample_calss2_fft = samples_fft[34:34*2]
-    sample_calss3_fft = samples_fft[34*2:]
+    samples_fft = list(map(abs, fft_for_sample(sample_calss1 + sample_calss2 + sample_calss3,
+                                               first_n_elements=FIRST_N_FFT)))
+
+    len_class = len(sample_calss1)
+    sample_calss1_fft = samples_fft[:len_class]
+    sample_calss2_fft = samples_fft[len_class:len_class*2]
+    sample_calss3_fft = samples_fft[len_class*2:]
 
     #Создание строк для датасета, из матрицы 128*20 -> в вектор 2560
     sample_calss1_fft_str = create_strings_for_dataset(sample_calss1_fft)
@@ -226,10 +251,9 @@ def main():
     sample_calss3_fft_str = create_strings_for_dataset(sample_calss3_fft)
 
     #Создание таблицы объекты-признаки
-    print('class markup... ')
 
     #Класс 1
-    data_class_1 = pd.DataFrame(data=np.zeros((34, 2560)))
+    data_class_1 = pd.DataFrame(data=np.zeros((len_class, size[0] * FIRST_N_FFT)))
     data_class_1['label'] = 1
 
     for i in tqdm(range(len(sample_calss1_fft_str))):
@@ -237,7 +261,7 @@ def main():
 
 
     #Класс 2
-    data_class_2 = pd.DataFrame(data=np.zeros((34, 2560)))
+    data_class_2 = pd.DataFrame(data=np.zeros((len_class, size[0] * FIRST_N_FFT)))
     data_class_2['label'] = 2
 
     for i in tqdm(range(len(sample_calss2_fft_str))):
@@ -245,7 +269,7 @@ def main():
 
 
     #Класс 3
-    data_class_3 = pd.DataFrame(data=np.zeros((34, 2560)))
+    data_class_3 = pd.DataFrame(data=np.zeros((len_class, size[0] * FIRST_N_FFT)))
     data_class_3['label'] = 3
 
     for i in tqdm(range(len(sample_calss3_fft_str))):
@@ -257,7 +281,7 @@ def main():
 
     ## Понизим размерность до 60 компонент
     from sklearn.decomposition import PCA
-    PCA = PCA(n_components=60)
+    PCA = PCA(n_components=N_COMPONENTS_PCA)
 
     #Стандартизируем матрицу
     Scaler = StandardScaler()
@@ -292,16 +316,13 @@ def main():
 
     train_features = data_standart
     from sklearn.decomposition import PCA
-    model = PCA(n_components=60).fit(train_features)
+    model = PCA(n_components=N_COMPONENTS_PCA).fit(train_features)
     X_pc = model.transform(train_features)
 
-    features_good = ['0', '1', '2', '3', '6']
-    features_normal = ['4','5','8','7']
-    features_bad = list(map(str, np.arange(9, 60)))
+    features_good, features_normal, features_bad = scoring_fi(feature_importances)
     #получим исходные признаки с весами вклада в компоненты PCA
     print('get weight features...')
-    print('~2min')
-    d = features_imp_pca(train_features, model, X_pc, features_good, features_bad, features_normal)
+    d = features_imp_pca(train_features, model, X_pc, features_good, features_bad, features_normal, size)
     sorted_d = sorted(d.items(), key=operator.itemgetter(1), reverse=True)
     best_features = [sorted_d[i][0] for i in range(15)]
     #Запишем в файл
