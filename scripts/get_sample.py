@@ -15,6 +15,7 @@ def get_sample(matrix, sample_size=550, step=200):
             beg_sample += step
             end_sample = beg_sample + sample_size
 
+
     return sample
 
 
