@@ -30,9 +30,9 @@ def fft_for_sample(sample_calss, freq, lowFreq = 1, highFreq = 35):
         new_sample = 0
         for idx, s in enumerate(range(sample.shape[0])):
             if idx == 0:
-                new_sample = get_spectrum(sample[s],freq)[0]
+                new_sample = get_spectrum(sample[s],freq, lowFreq=lowFreq, highFreq=highFreq)[0]
             else:
-                new_sample = np.vstack((new_sample, get_spectrum(sample[s],freq)[0]))
+                new_sample = np.vstack((new_sample, get_spectrum(sample[s],freq, lowFreq=lowFreq, highFreq=highFreq)[0]))
 
         sample_class_fft.append(new_sample)
 
