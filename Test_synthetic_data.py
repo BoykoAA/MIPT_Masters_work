@@ -76,9 +76,12 @@ def get_cosinus_matrix(chanals, linspace):
 
     data_simple = func_general(data_simple)
     data_simple[0] = data_simple[1]
-    # data_simple[10] = vec #########!!!!!!!!!!!!!!!!
+
+    data_simple[10] = vec #########!!!!!!!!!!!!!!!!
     data_simple[100] = vec #########!!!!!!!!!!!!!!!!
-    # data_simple[65] = vec
+    #data_simple[65] = vec
+    #data_simple[66] = vec
+    #data_simple[67] = vec
 
     size = data_simple.shape
     class_ = size[1] //3
