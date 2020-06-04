@@ -3,7 +3,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 from math import pi
 import sys
-sys.path.insert(1, 'scripts/')
+sys.path.insert(1, './')
 from gen_matrix import matrix_gen, get_ICA
 from get_sample import get_sample, create_strings_for_dataset
 from fft import fft_for_sample

@@ -3,7 +3,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 from math import pi
 import sys
-sys.path.insert(1, 'scripts/')
+sys.path.insert(1, './')
 from gen_matrix import matrix_gen, get_ICA
 from get_sample import get_sample, create_strings_for_dataset
 from fft import fft_for_sample
@@ -13,7 +13,6 @@ from sklearn.decomposition import PCA
 from sklearn.preprocessing import StandardScaler
 import collections
 import operator
-from sklearn import decomposition
 
 ## CONSTANTS
 
@@ -48,16 +47,16 @@ def generate_simple_dataset(linspace, chanals, pandas=False):
     return dataset
 
 def func_for_1class(t, noise=0.5):
-    return 2*np.cos(5*2*pi*t) + 5*np.cos(15*2*pi*t) + 3*np.cos(20*2*pi*t) + np.random.normal(0,1)
+    return 2*np.cos(5*2*pi*t) + 5*np.cos(15*2*pi*t) + 3*np.cos(20*2*pi*t) + noise
 
 def func_for_2class(t, noise=0.5):
-    return 3*np.cos(5*2*pi*t) + 2*np.cos(15*2*pi*t) + 3*np.cos(20*2*pi*t) + np.random.normal(0,1)
+    return 3*np.cos(5*2*pi*t) + 2*np.cos(15*2*pi*t) + 3*np.cos(20*2*pi*t) + noise
 
 def func_for_3class(t, noise=0.5):
-    return 4*np.cos(5*2*pi*t) + 10*np.cos(15*2*pi*t) + 3*np.cos(20*2*pi*t) + np.random.normal(0,1)
+    return 4*np.cos(5*2*pi*t) + 10*np.cos(15*2*pi*t) + 3*np.cos(20*2*pi*t) + noise
 
 def func_general(t, noise=0.5):
-    return 9*np.cos(5*2*pi*t) + 10*np.cos(15*2*pi*t) + 3*np.cos(20*2*pi*t) + np.random.normal(0,1)
+    return 9*np.cos(5*2*pi*t) + 10*np.cos(15*2*pi*t) + 3*np.cos(20*2*pi*t) + noise
 
 def get_cosinus_matrix(chanals, linspace):
     data_simple = generate_simple_dataset(linspace, chanals)
@@ -77,9 +76,12 @@ def get_cosinus_matrix(chanals, linspace):
 
     data_simple = func_general(data_simple)
     data_simple[0] = data_simple[1]
-    # data_simple[10] = vec #########!!!!!!!!!!!!!!!!
+
+    data_simple[10] = vec #########!!!!!!!!!!!!!!!!
     data_simple[100] = vec #########!!!!!!!!!!!!!!!!
-    # data_simple[65] = vec
+    data_simple[65] = vec
+    #data_simple[66] = vec
+    #data_simple[67] = vec
 
     size = data_simple.shape
     class_ = size[1] //3
@@ -250,11 +252,6 @@ def run():
     print('Start')
     print('Make data')
     matrix, size, class_ = get_cosinus_matrix(chanals=CHANALS, linspace=LINSPACE)
-
-    FastICA = decomposition.FastICA(n_components=CHANALS).fit(matrix.T)
-    ICA = FastICA.transform(matrix.T)
-    matrix = ICA.T
-
     matrix_class1 = matrix[:,0:class_]
     matrix_calss2 = matrix[:, class_:class_*2]
     matrix_calss3 = matrix[:, class_*2:matrix.shape[1]]
@@ -346,15 +343,10 @@ def run():
     old_table = table_recovery(train_features, FIRST_N_FFT, size)
     FE_items = search_important_features(old_table)
 
-    best_feat = list(map(lambda x: x[0],
-    sorted(collections.Counter(list(map(lambda x: x[1], FE_items))).items(),
-           key=operator.itemgetter(1), reverse=True)))
+    ans = sorted(collections.Counter(list(map(lambda x: x[1],
+        FE_items))).items(), key=operator.itemgetter(1), reverse=True)
 
-    ch = []
-    for i in best_feat:
-        ch.append(np.argmax(np.abs(FastICA.mixing_[:, i])))
-
-    print(ch)
-    return ch
+    print(ans)
+    return ans
 
 run()
